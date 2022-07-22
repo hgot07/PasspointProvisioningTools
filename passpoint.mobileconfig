@@ -1,0 +1,244 @@
+#!/usr/bin/perl
+#
+# Passpoint Provisioning Tools
+#  Simple CGI script for Passpoint profile provisioning
+#  Target: iOS/iPadOS 14+, macOS 10+
+# 
+# Usage:
+#  - Customize the configuration part below.
+#  - Put this script on a web server as a CGI program.
+#    (Please refer to the HTTP server's manual for configuring CGI.)
+#  - Access https://<path_to_script>/passpoint.mobileconfig.
+# Notes:
+#  - It is recommended to sign the configuration profile (XML), although
+#    unsigned profiles can still be used.
+#  - External command "openssl" is needed for the signing.
+#  - The key and certificate files for signing need to be accessible
+#    from the process group such as "www". (chgrp & chmod o+r)
+# References:
+#  - Configuration Profile Reference
+#    https://developer.apple.com/business/documentation/Configuration-Profile-Reference.pdf
+#
+# 20220723 Hideaki Goto (Cityroam/eduroam)
+#
+
+use CGI;
+use DateTime;
+use MIME::Base64;
+use Data::UUID;
+
+
+#---- Configuration part ----
+
+#### Set ID/PW and realm here. ####
+$userID = 'name@example.com';
+$passwd = 'somePassword';
+
+$uname = $anonID = $userID;
+$anonID =~ s/^.*@/anonymous@/;
+
+
+# Passpoint (ANQP)
+
+$HomeDomain = 'example.com';	# to be used to distinguish home/foreign ANP
+$friendlyName = 'Example Comm IdP';
+$RCOI = '5a03ba0000,004096';	# comma-separated, no space
+$NAIrealm='example.com';	# to be used for network selection by ANQP
+
+
+# Server authentication
+
+$AAAFQDN = 'idp.example.com';	# domain name embedded in the server cert.
+$CAfile = 'ca.pem';	# must be in PEM format
+$ICAfile = '';	# ICA cert. to be embedded / must be in PEM format
+
+$ICAcertname = 'Intermediate CA cert.';
+
+
+# Profile signing
+
+$signercert = '';	# signing may be omitted for Apple devices
+#$signercert = '/<cert_path>/cert.pem';
+$signerkey = '/<cert_path>/privkey.pem';
+
+
+# Apple Payload configuration
+
+$PayloadDisplayName = 'Example Comm';
+$description = 'Configure Passpoint for Example Comm IdP';
+
+# (Set a globally-unique, fixed UUID for the same kind of profile.)
+$PLuuid = 'A1D7829E-E4DD-48B3-828C-BA027B0F4CED';
+$PLuuid = uc $PLuuid;	# make sure capital
+
+$PLID = "ExampleComm.$PLuuid";
+
+
+#---- Profile composition part ----
+# (no need to edit below, hopefully)
+
+$ts=DateTime->now->datetime."Z";
+
+my $uuid1 = Data::UUID->new->create_str();
+$uuid1 = uc $uuid1;
+my $uuid2 = Data::UUID->new->create_str();
+$uuid2 = uc $uuid2;
+
+$RCOI =~ s/\s*//g;
+$xml_RCOI = '';
+if ( $RCOI ne '' ){
+	$RCOI = uc $RCOI;
+	my @ois = split(/,/, $RCOI);
+	$xml_RCOI = "\t\t\t<key>RoamingConsortiumOIs</key>\n";
+	$xml_RCOI .= "\t\t\t<array>\n";
+	for my $oi (@ois){
+		$xml_RCOI .= "\t\t\t\t<string>$oi</string>\n";
+	}
+	$xml_RCOI .= "\t\t\t</array>\n";
+}
+
+$xml_NAI = '';
+if ( $NAIrealm ne '' ){
+$xml_NAI = <<"EOS";
+			<key>NAIRealmNames</key>
+			<array>
+				<string>$NAIrealm</string>
+			</array>
+EOS
+}
+
+$xml_anchor = '';
+$xml_cert = '';
+if ( $ICAfile ne '' ){
+$cert = '';
+	open my $fh, '<', $ICAfile;
+	while(<$fh>){
+		if ( $_ =~ /BEGIN\s+CERTIFICATE/ ){ next; }
+		if ( $_ =~ /END\s+CERTIFICATE/ ){ last; }
+		$cert .= $_;
+	}
+	close $fh;
+	chomp $cert;
+	$cert =~ s/\n//g;
+
+$xml_anchor = <<"EOS";
+				<key>PayloadCertificateAnchorUUID</key>
+				<array>
+					<string>$uuid2</string>
+				</array>
+EOS
+
+$xml_cert = <<"EOS";
+		<dict>
+			<key>PayloadDisplayName</key>
+			<string>$ICAcertname</string>
+			<key>PayloadType</key>
+			<string>com.apple.security.pkcs1</string>
+			<key>PayloadUUID</key>
+			<string>$uuid2</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.security.pkcs1.$uuid2</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadContent</key>
+			<data>
+				$cert
+			</data>
+		</dict>
+EOS
+}
+
+my $xmltext = <<"EOS";
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadDisplayName</key>
+	<string>$PayloadDisplayName</string>
+	<key>PayloadIdentifier</key>
+	<string>$PLID</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>$PLuuid</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>AutoJoin</key>
+			<true/>
+			<key>CaptiveBypass</key>
+			<false/>
+			<key>DisableAssociationMACRandomization</key>
+			<false/>
+			<key>DisplayedOperatorName</key>
+			<string>$friendlyName</string>
+			<key>DomainName</key>
+			<string>$HomeDomain</string>
+			<key>EAPClientConfiguration</key>
+			<dict>
+				<key>AcceptEAPTypes</key>
+				<array>
+					<integer>21</integer>
+				</array>
+				<key>TLSTrustedServerNames</key>
+				<array>
+					<string>$AAAFQDN</string>
+				</array>
+${xml_anchor}				<key>TTLSInnerAuthentication</key>
+				<string>MSCHAPv2</string>
+				<key>UserName</key>
+				<string>$uname</string>
+				<key>UserPassword</key>
+				<string>$passwd</string>
+				<key>OuterIdentity</key>
+				<string>$anonID</string>
+			</dict>
+			<key>EncryptionType</key>
+			<string>WPA2</string>
+			<key>HIDDEN_NETWORK</key>
+			<false/>
+			<key>IsHotspot</key>
+			<true/>
+			<key>PayloadDescription</key>
+			<string>$description</string>
+			<key>PayloadDisplayName</key>
+			<string>Wi-Fi</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.wifi.managed.$uuid1</string>
+			<key>PayloadType</key>
+			<string>com.apple.wifi.managed</string>
+			<key>PayloadUUID</key>
+			<string>$uuid1</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>ProxyType</key>
+			<string>None</string>
+${xml_RCOI}${xml_NAI}			<key>ServiceProviderRoamingEnabled</key>
+			<true/>
+		</dict>
+$xml_cert	</array>
+</dict>
+</plist>
+EOS
+
+
+print <<EOS;
+Content-Type: application/x-apple-aspen-config
+
+EOS
+
+if ( $signercert eq '' ){
+	print $xmltext;
+}
+else{
+#	open(fh, "| sudo openssl smime -sign -nodetach -signer $signercert -inkey $signerkey -outform der");
+	open(fh, "| openssl smime -sign -nodetach -signer $signercert -inkey $signerkey -outform der");
+	print fh $xmltext;
+	close(fh);
+}
+
+exit(0);
