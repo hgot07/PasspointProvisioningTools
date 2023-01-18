@@ -16,12 +16,14 @@
 #  - See also the main script passpoint-win.config.
 #
 # 20220729 Hideaki Goto (Cityroam/eduroam)
+# 20230118 Hideaki Goto (Cityroam/eduroam)	+ Script URI auto-setting
 #
 
 use String::Random;
 use Redis;
 
-$confCGI = 'ms-settings:wifi-provisioning?uri=https://idp.cityroam.jp/deas/ext/passpoint-win.config';
+$confCGI = "ms-settings:wifi-provisioning?uri=https://$ENV{'HTTP_HOST'}$ENV{'REQUEST_URI'}";
+$confCGI =~ s/user\/ppwin-helper.cgi/ext\/passpoint-win.config/;
 
 $TTL = 60;
 
