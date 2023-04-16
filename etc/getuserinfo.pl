@@ -10,3 +10,5 @@ sub getuserinfo {
 
 	return(0);
 }
+
+1;
