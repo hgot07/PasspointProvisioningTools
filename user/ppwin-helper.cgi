@@ -17,6 +17,7 @@
 #
 # 20220729 Hideaki Goto (Cityroam/eduroam)
 # 20230118 Hideaki Goto (Cityroam/eduroam)	+ Script URI auto-setting
+# 20230510 Hideaki Goto (Cityroam/eduroam)	+ Fixed very rare key conflict in redis
 #
 
 use String::Random;
@@ -28,11 +29,14 @@ $confCGI =~ s/user\/ppwin-helper.cgi/ext\/passpoint-win.config/;
 $TTL = 60;
 
 my $sr = String::Random->new();
-$key = $sr->randregex('[a-zA-Z0-9]{20}');
 
 my $redis = Redis->new(server => 'localhost:6379') or die;
 $uid = $ENV{'REMOTE_USER'};
 
+my $cnt = 10;
+do {
+	$key = $sr->randregex('[a-zA-Z0-9]{20}');
+} while ( ! $redis->setnx($key, $uid) && $cnt-- >0 );
 $redis->set($key, "$uid", 'EX', $TTL);
 
 print << "EOS";
