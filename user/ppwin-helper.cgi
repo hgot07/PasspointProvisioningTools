@@ -36,8 +36,7 @@ $uid = $ENV{'REMOTE_USER'};
 my $cnt = 10;
 do {
 	$key = $sr->randregex('[a-zA-Z0-9]{20}');
-} while ( ! $redis->setnx($key, $uid) && $cnt-- >0 );
-$redis->set($key, "$uid", 'EX', $TTL);
+} while ( ! $redis->set($key, "$uid", 'EX', $TTL, 'NX') && $cnt-- >0 );
 
 print << "EOS";
 Content-Type: text/html
