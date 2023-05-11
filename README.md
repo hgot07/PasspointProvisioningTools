@@ -7,5 +7,5 @@ Tools and example codes for Passpoint profile provisioning, mainly for OpenRoami
 
 ## Directory layout
 - user: Website with user's login, i.e., with access control.
-- ext: Open website.
+- ext: Open website where Windows Wi-Fi Settings can download the profile from.
 - etc: Storage for configuration and certificate files.
