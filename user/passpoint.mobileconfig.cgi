@@ -15,9 +15,13 @@
 #  - External command "openssl" is needed for the signing.
 #  - The key and certificate files for signing need to be accessible
 #    from the process group such as "www". (chgrp & chmod o+r)
+#  - You don't need to change EncryptionType "WPA2" even if you want
+#    to join a WPA3 network. Please see the References for details.
 # References:
 #  - Configuration Profile Reference
 #    https://developer.apple.com/business/documentation/Configuration-Profile-Reference.pdf
+#  - The payload for configuring Wi-Fi on the device.
+#    https://developer.apple.com/documentation/devicemanagement/wifi
 #
 # 20220723 Hideaki Goto (Cityroam/eduroam)
 # 20220729 Hideaki Goto (Cityroam/eduroam)
@@ -25,6 +29,7 @@
 # 20220812 Hideaki Goto (Cityroam/eduroam)
 # 20220817 Hideaki Goto (Cityroam/eduroam)	+ cert. chain for signing
 # 20220826 Hideaki Goto (Cityroam/eduroam)	+ per-user ExpirationDate
+# 20230908 Hideaki Goto (Cityroam/eduroam)	Renamed
 #
 
 use CGI;
@@ -216,6 +221,7 @@ EOS
 
 print <<EOS;
 Content-Type: application/x-apple-aspen-config
+Content-Disposition: attachment; filename="passpoint.mobileconfig"
 
 EOS
 
