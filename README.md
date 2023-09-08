@@ -1,5 +1,5 @@
 # PasspointProvisioningTools
-Tools and example codes for Passpoint profile provisioning, mainly for OpenRoaming.
+Tools and example codes for Passpoint profile provisioning, mainly for OpenRoaming. Only EAP-TTLS is supported. If you want to use EAP-TLS, you need to write your own code. Some OSs may not support EAP-TLS.
 
 ## Features
 - The tools and codes help operators develop their own Passpoint profile provisioning systems.
