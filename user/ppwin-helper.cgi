@@ -17,7 +17,7 @@
 #
 # 20220729 Hideaki Goto (Cityroam/eduroam)
 # 20230118 Hideaki Goto (Cityroam/eduroam)	+ Script URI auto-setting
-# 20230510 Hideaki Goto (Cityroam/eduroam)	+ Fixed very rare key conflict in redis
+# 20230511 Hideaki Goto (Cityroam/eduroam)	+ Fixed very rare key conflict in redis
 #
 
 use String::Random;

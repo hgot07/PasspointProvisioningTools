@@ -5,8 +5,11 @@ sub getuserinfo {
 
 # Write your own code here to set per-user parameters.
 	#$userID = 'name@example.com';
-	#$passwd = 'somePassword';
+	#$passwd = 'nicePassword';
 	#$ExpirationDate = '2023-01-05T00:00:00Z';
+
+	# for EAP-TLS (in PEM format)
+	#$clientcert = '';
 
 	return(0);
 }
