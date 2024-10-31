@@ -30,6 +30,7 @@
 # 20220817 Hideaki Goto (Cityroam/eduroam)	+ cert. chain for signing
 # 20220826 Hideaki Goto (Cityroam/eduroam)	+ per-user ExpirationDate
 # 20230908 Hideaki Goto (Cityroam/eduroam)	Renamed
+# 20241031 Hideaki Goto (Cityroam/eduroam)	Add EAP-TLS support.
 #
 
 use CGI;
@@ -47,7 +48,8 @@ require '../etc/pp-common.cfg';
 #$userID = 'name@example.com';
 #$passwd = 'somePassword';
 
-# External code that sets $userID, $passwd, and optionally $ExpirationDate
+# External code that sets $userID, $passwd,
+#   and optionally $ExpirationDate, $client_cert, etc.
 require '../etc/getuserinfo.pl';
 if ( &getuserinfo( $ENV{'REMOTE_USER'} ) ){ exit(1); }
 
@@ -62,12 +64,17 @@ $anonID =~ s/^.*@/anonymous@/;
 #---- Profile composition part ----
 # (no need to edit below, hopefully)
 
+# Fix certificate format
+chomp($client_cert);
+
 $ts=DateTime->now->datetime."Z";
 
 my $uuid1 = Data::UUID->new->create_str();
 $uuid1 = uc $uuid1;
 my $uuid2 = Data::UUID->new->create_str();
 $uuid2 = uc $uuid2;
+my $cert_uuid = Data::UUID->new->create_str();
+$cert_uuid = uc $cert_uuid;
 
 $xml_Expire = '';
 if ( $ExpirationDate ne '' ){
@@ -141,7 +148,113 @@ $xml_cert = <<"EOS";
 EOS
 }
 
-my $xmltext = <<"EOS";
+if ( $client_cert ){
+
+$xmltext = <<"EOS";
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadDisplayName</key>
+	<string>$PayloadDisplayName</string>
+	<key>PayloadIdentifier</key>
+	<string>$PLID</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>$PLuuid</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+${xml_Expire}	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>AutoJoin</key>
+			<true/>
+			<key>CaptiveBypass</key>
+			<false/>
+			<key>DisableAssociationMACRandomization</key>
+			<false/>
+			<key>DisplayedOperatorName</key>
+			<string>$friendlyName</string>
+			<key>DomainName</key>
+			<string>$HomeDomain</string>
+			<key>EAPClientConfiguration</key>
+			<dict>
+				<key>AcceptEAPTypes</key>
+				<array>
+					<integer>13</integer>
+				</array>
+				<key>TLSTrustedServerNames</key>
+				<array>
+					<string>$AAAFQDN</string>
+				</array>
+${xml_anchor}				<key>UserName</key>
+				<string>$anonID</string>
+				<key>TLSCertificateIsRequired</key>
+				<true/>
+				<key>TLSMaximumVersion</key>
+				<string>1.2</string>
+				<key>TLSMinimumVersion</key>
+				<string>1.2</string>
+			</dict>
+			<key>EncryptionType</key>
+			<string>WPA2</string>
+			<key>HIDDEN_NETWORK</key>
+			<false/>
+			<key>IsHotspot</key>
+			<true/>
+			<key>PayloadCertificateUUID</key>
+			<string>$cert_uuid</string>
+			<key>PayloadDescription</key>
+			<string>$description</string>
+			<key>PayloadDisplayName</key>
+			<string>Wi-Fi</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.wifi.managed.$uuid1</string>
+			<key>PayloadType</key>
+			<string>com.apple.wifi.managed</string>
+			<key>PayloadUUID</key>
+			<string>$uuid1</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>ProxyType</key>
+			<string>None</string>
+${xml_RCOI}${xml_NAI}			<key>ServiceProviderRoamingEnabled</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Password</key>
+			<string>$client_cert_pass</string>
+			<key>PayloadCertificateFileName</key>
+			<string>${uname}.p12</string>
+			<key>PayloadContent</key>
+			<data>
+$client_cert
+			</data>
+			<key>PayloadDescription</key>
+			<string>Add certificate in PKCS#12 format.</string>
+			<key>PayloadDisplayName</key>
+			<string>${uname}.p12</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.security.pkcs12.$cert_uuid</string>
+			<key>PayloadType</key>
+			<string>com.apple.security.pkcs12</string>
+			<key>PayloadUUID</key>
+			<string>$cert_uuid</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+$xml_cert	</array>
+</dict>
+</plist>
+EOS
+
+}
+else{
+
+$xmltext = <<"EOS";
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -217,6 +330,8 @@ $xml_cert	</array>
 </dict>
 </plist>
 EOS
+
+}
 
 
 print <<EOS;
