@@ -42,10 +42,10 @@ EAP-TLS (RFC 5216) is not always so secure in terms of privacy.
 When TLS 1.2 or older is used, 
 Access Network Providers can snoop into the contents of client certificates.
 An efficient and straightforward solution would be
- to restirct the use to TLS 1.3.
+ to use TLS 1.3.
 
 When TLS 1.3 is not available on user devices,
-a compromised workaround would be to use 
+a compromised solution would be to use 
 "EAP-TTLS with EAP-TLS as inner method".
 Client certificates are protected by the encrypted tunnel of EAP-TTLS.
 Some supplicants like wpa_supplicant and Windows support this configuration,
