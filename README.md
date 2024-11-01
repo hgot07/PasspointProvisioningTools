@@ -20,6 +20,7 @@ CGI scripts require execution handler,
 These tools are compatible with WPA3. Even if you see WPA2 string in the profiles, it allows Apple and Microsoft devices to join WPA2 or WPA3 networks. Profile for Android (PPS MO) does not have such setting.
 
 ## EAP-TLS support status
+### Supported OS
 These tools support EAP-TLS on the following operating systems.
 - Android
 - iOS/iPadOS
@@ -36,9 +37,18 @@ A workaround is as follows, but this is cumbersome.
  and loads the client certificate manually.
 1. User changes the Wi-Fi setting to EAP-TLS mode from EAP-TTLS manually.
 
-Note that the EAP-TLS (RFC 5216) is not always so secure in terms of privacy.
+### Note on Privacy Protection
+EAP-TLS (RFC 5216) is not always so secure in terms of privacy.
+When TLS 1.2 or older is used, 
 Access Network Providers can snoop into the contents of client certificates.
-A workaround is to use "EAP-TTLS with EAP-TLS as inner method".
+An efficient and straightforward solution would be
+ to restirct the use to TLS 1.3.
+
+When TLS 1.3 is not available on user devices,
+a compromised workaround would be to use 
+"EAP-TTLS with EAP-TLS as inner method".
+Client certificates are protected by the encrypted tunnel of EAP-TTLS.
 Some supplicants like wpa_supplicant and Windows support this configuration,
  but the ms-settings: URI scheme does not work as explained above.
+
 
