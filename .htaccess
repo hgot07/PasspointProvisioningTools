@@ -1,0 +1,4 @@
+DirectoryIndex index.html
+Options +ExecCGI -Includes
+AddHandler cgi-script .cgi .config
+SSLOptions +StdEnvVars
